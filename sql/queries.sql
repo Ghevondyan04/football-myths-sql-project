@@ -1,24 +1,4 @@
 
-/*
-============================================================
-Football Project — End-to-End Descriptive SQL Analysis
-Database: Microsoft SQL Server
-Purpose:
-  1) Create clean analysis views from the loaded relational tables
-  2) Create simple summary tables for presentation/report
-  3) Use descriptive statistics only: counts, percentages, means, SDs
-
-How to run:
-  - Open this file in SQL Server Management Studio / Azure Data Studio
-  - Select the correct database: FootballProject
-  - Run the whole script
-  - The final SELECT statements will display all summary tables
-
-Important:
-  These are descriptive summaries, not formal statistical hypothesis tests.
-============================================================
-*/
-
 ---------------------------------------------------------
 -- STEP 0. DROP OLD SUMMARY TABLES AND ANALYSIS VIEWS
 ----------------------------------------------------------
@@ -363,41 +343,43 @@ SELECT
     MatchResult,
     COUNT(*) AS Matches,
     CAST(100.0 * COUNT(*) / NULLIF(SUM(COUNT(*)) OVER (), 0) AS DECIMAL(10,2)) AS PercentOfMatches,
+    CAST(AVG(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS MeanTotalGoals,
+    CAST(STDEV(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS SDTotalGoals
 INTO dbo.Summary_02_MatchResults
 FROM dbo.v_match_analysis
 WHERE IsNeutral = 0
 GROUP BY MatchResult;
 
 
--- ----------------------------------------------------------
--- -- STEP 7. CREATE SUMMARY TABLE 03: HOME ADVANTAGE BY DECADE
--- -- Includes window function LAG.
--- ----------------------------------------------------------
----- nuyn step 6n e uxxaki 10amyaknerov
--- WITH decade_home AS (
---     SELECT
---         MatchDecade,
---         COUNT(*) AS NonNeutralMatches,
---         CAST(100.0 * SUM(CASE WHEN MatchResult = 'Home win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS HomeWinPercent,
---         CAST(100.0 * SUM(CASE WHEN MatchResult = 'Away win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS AwayWinPercent,
---         CAST(100.0 * SUM(CASE WHEN MatchResult = 'Draw' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS DrawPercent,
---         CAST(AVG(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS MeanGoals,
---         CAST(STDEV(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS SDGoals
---     FROM dbo.v_match_analysis
---     WHERE IsNeutral = 0
---     GROUP BY MatchDecade
--- )
--- SELECT
---     MatchDecade,
---     NonNeutralMatches,
---     HomeWinPercent,
---     HomeWinPercent - LAG(HomeWinPercent) OVER (ORDER BY MatchDecade) AS ChangeFromPreviousDecade,
---     AwayWinPercent,
---     DrawPercent,
---     MeanGoals,
---     SDGoals
--- INTO dbo.Summary_03_HomeAdvantageByDecade
--- FROM decade_home;
+----------------------------------------------------------
+-- STEP 7. CREATE SUMMARY TABLE 03: HOME ADVANTAGE BY DECADE
+-- Includes window function LAG.
+----------------------------------------------------------
+
+WITH decade_home AS (
+    SELECT
+        MatchDecade,
+        COUNT(*) AS NonNeutralMatches,
+        CAST(100.0 * SUM(CASE WHEN MatchResult = 'Home win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS HomeWinPercent,
+        CAST(100.0 * SUM(CASE WHEN MatchResult = 'Away win' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS AwayWinPercent,
+        CAST(100.0 * SUM(CASE WHEN MatchResult = 'Draw' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(10,2)) AS DrawPercent,
+        CAST(AVG(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS MeanGoals,
+        CAST(STDEV(CAST(TotalGoals AS FLOAT)) AS DECIMAL(10,2)) AS SDGoals
+    FROM dbo.v_match_analysis
+    WHERE IsNeutral = 0
+    GROUP BY MatchDecade
+)
+SELECT
+    MatchDecade,
+    NonNeutralMatches,
+    HomeWinPercent,
+    HomeWinPercent - LAG(HomeWinPercent) OVER (ORDER BY MatchDecade) AS ChangeFromPreviousDecade,
+    AwayWinPercent,
+    DrawPercent,
+    MeanGoals,
+    SDGoals
+INTO dbo.Summary_03_HomeAdvantageByDecade
+FROM decade_home;
 
 
 -------------------------------------------------------
